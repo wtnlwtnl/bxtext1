@@ -1,14 +1,10 @@
 #include <iostream>
-#include <windows.h>
 #include <vector>
 #include <iomanip>
-#include <cstdlib> // 用于随机数生成
-using namespace std;
+#include <cstdlib>  // 用于随机数生成
+#include <ctime>    // clock() 计时
 
-// 使用高精度计时器 QueryPerformanceCounter()
-double get_time_ms(LARGE_INTEGER start, LARGE_INTEGER end, LARGE_INTEGER freq) {
-    return (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
-}
+using namespace std;
 
 // 测试算法：执行矩阵-向量乘法
 void matrix_vector_mult(int n) {
@@ -25,9 +21,6 @@ void matrix_vector_mult(int n) {
 }
 
 int main() {
-    LARGE_INTEGER freq, start, end;
-    QueryPerformanceFrequency(&freq); // 获取时钟频率
-
     vector<int> n_values = {0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
                             200, 300, 400, 500, 600, 700, 800, 900,
                             1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000};
@@ -44,13 +37,13 @@ int main() {
         int repeat_count = rand() % 100 + 1; // 生成 1 到 100 之间的随机重复次数
         double total_time = 0.0;
 
-        QueryPerformanceCounter(&start); // 记录开始时间
+        clock_t start = clock(); // 记录开始时间
         for (int r = 0; r < repeat_count; r++) {
             matrix_vector_mult(n); // 执行算法
         }
-        QueryPerformanceCounter(&end); // 记录结束时间
+        clock_t end = clock(); // 记录结束时间
 
-        total_time = get_time_ms(start, end, freq); // 计算总时间(ms)
+        total_time = (double)(end - start) / CLOCKS_PER_SEC * 1000.0; // 计算总时间(ms)
         double avg_time = total_time / repeat_count; // 计算平均时间(ms)
 
         // 打印结果
