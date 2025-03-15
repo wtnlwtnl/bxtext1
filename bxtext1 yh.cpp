@@ -1,11 +1,9 @@
-
-
-
 #include <iostream>
 #include <windows.h>
 #include <vector>
 #include <iomanip>
-#include <cstdlib> // 用于随机数生成
+#include <cstdlib> // 生成随机数
+
 using namespace std;
 
 // 使用高精度计时器 QueryPerformanceCounter()
@@ -13,15 +11,20 @@ double get_time_ms(LARGE_INTEGER start, LARGE_INTEGER end, LARGE_INTEGER freq) {
     return (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 }
 
-// 测试算法：执行矩阵-向量乘法
-void matrix_vector_mult(int n) {
+// Cache 优化的矩阵-向量乘法
+void optimized_matrix_vector_mult(int n) {
     vector<vector<double>> B(n, vector<double>(n, 1.0)); // 生成 n x n 矩阵
     vector<double> a(n, 1.0); // 生成 n 维向量
     vector<double> sum(n, 0.0); // 存储结果
 
+    // 初始化 sum 数组
     for (int i = 0; i < n; i++) {
         sum[i] = 0.0;
-        for (int j = 0; j < n; j++) {
+    }
+
+    // Cache 优化的矩阵-向量乘法（按行遍历）
+    for (int j = 0; j < n; j++) {
+        for (int i = 0; i < n; i++) {
             sum[i] += B[j][i] * a[j];
         }
     }
@@ -29,7 +32,7 @@ void matrix_vector_mult(int n) {
 
 int main() {
     LARGE_INTEGER freq, start, end;
-    QueryPerformanceFrequency(&freq); // 获取时钟频率
+    QueryPerformanceFrequency(&freq); // 获取高精度计时器的时钟频率
 
     vector<int> n_values = {0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
                             200, 300, 400, 500, 600, 700, 800, 900,
@@ -49,7 +52,7 @@ int main() {
 
         QueryPerformanceCounter(&start); // 记录开始时间
         for (int r = 0; r < repeat_count; r++) {
-            matrix_vector_mult(n); // 执行算法
+            optimized_matrix_vector_mult(n); // 执行优化算法
         }
         QueryPerformanceCounter(&end); // 记录结束时间
 
