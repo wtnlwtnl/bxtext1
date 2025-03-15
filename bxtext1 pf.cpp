@@ -1,57 +1,141 @@
 #include <iostream>
 #include <vector>
+#include <ctime>
+#include <cstdlib>
 #include <iomanip>
-#include <cstdlib>  // 用于随机数生成
-#include <ctime>    // clock() 计时
+#include <algorithm> // for max()
+
+
+
 
 using namespace std;
 
-// 测试算法：执行矩阵-向量乘法
-void matrix_vector_mult(int n) {
-    vector<vector<double>> B(n, vector<double>(n, 1.0)); // 生成 n x n 矩阵
-    vector<double> a(n, 1.0); // 生成 n 维向量
-    vector<double> sum(n, 0.0); // 存储结果
 
+
+
+// 算法1：平凡算法（逐元素求和）
+void algorithm1(const vector<int>& a, int n) {
+    int sum = 0;
     for (int i = 0; i < n; i++) {
-        sum[i] = 0.0;
-        for (int j = 0; j < n; j++) {
-            sum[i] += B[j][i] * a[j];
-        }
+        sum += a[i];
     }
 }
 
-int main() {
-    vector<int> n_values = {0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100,
-                            200, 300, 400, 500, 600, 700, 800, 900,
-                            1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000};
 
-    // 打印表头
-    cout << left << setw(10) << "n" 
-         << setw(15) << "重复次数"
-         << setw(15) << "总时间(ms)"
-         << setw(15) << "平均时间(ms)" << endl;
-    cout << string(55, '-') << endl;
 
-    // 遍历不同的 n 值
-    for (int n : n_values) {
-        int repeat_count = rand() % 100 + 1; // 生成 1 到 100 之间的随机重复次数
-        double total_time = 0.0;
 
-        clock_t start = clock(); // 记录开始时间
-        for (int r = 0; r < repeat_count; r++) {
-            matrix_vector_mult(n); // 执行算法
+// 算法2：多路链式算法（两路累加）
+void algorithm2(const vector<int>& a, int n) {
+    int sum1 = 0, sum2 = 0;
+    for (int i = 0; i < n; i += 2) {
+        sum1 += a[i];
+        if (i + 1 < n) {
+            sum2 += a[i + 1];
         }
-        clock_t end = clock(); // 记录结束时间
-
-        total_time = (double)(end - start) / CLOCKS_PER_SEC * 1000.0; // 计算总时间(ms)
-        double avg_time = total_time / repeat_count; // 计算平均时间(ms)
-
-        // 打印结果
-        cout << left << setw(10) << n
-             << setw(15) << repeat_count
-             << setw(15) << fixed << setprecision(3) << total_time
-             << setw(15) << fixed << setprecision(7) << avg_time << endl;
     }
+    int sum = sum1 + sum2;
+}
+
+
+
+
+// 算法3：二重循环求和算法（递归归约）
+int algorithm3(vector<int> a, int n) {
+    int m = n;
+    while (m > 1) {
+        for (int i = 0; i < m / 2; i++) {
+            a[i] = a[2 * i] + a[2 * i + 1];
+        }
+        m /= 2;
+    }
+    return a[0];
+}
+
+
+
+
+int main() {
+    srand(static_cast<unsigned int>(time(0)));
+
+
+
+
+    // 取 n 的值
+    vector<int> n_values = {1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024,
+        2048, 4096, 8192,16384,32768};
+
+
+
+
+    // 输出表头
+    cout << setw(7) << "n"
+         << setw(24) << "重复次数"
+         << setw(26) << "Alg1总时间(ms)"
+         << setw(22) << "Alg1平均(ms)"
+         << setw(25) << "Alg2总时间(ms)"
+         << setw(22) << "Alg2平均(ms)"
+         << setw(25) << "Alg3总时间(ms)"
+         << setw(22) << "Alg3平均(ms)"
+         << endl;
+
+
+    // 遍历所有 n 值进行测试
+    for (auto n : n_values) {
+        // 生成一个大小为 n 的随机数组，元素为 0 到 100 的随机数
+        vector<int> a(n);
+        for (int i = 0; i < n; i++) {
+            a[i] = rand() % 101; // 0~100
+        }
+
+
+        // 随机生成重复次数（范围 0-100），若为 0 则至少重复一次
+        int repetitions = max(1, rand() % 101);
+
+
+        double total_time1 = 0.0, total_time2 = 0.0, total_time3 = 0.0;
+
+
+        // 测试算法1：平凡算法
+        clock_t start_time = clock();
+        for (int rep = 0; rep < repetitions; rep++) {
+            algorithm1(a, n);
+        }
+        total_time1 = double(clock() - start_time) / CLOCKS_PER_SEC * 1000.0; // ms
+        double avg_time1 = total_time1 / repetitions;
+
+
+        // 测试算法2：多路链式算法
+        start_time = clock();
+        for (int rep = 0; rep < repetitions; rep++) {
+            algorithm2(a, n);
+        }
+        total_time2 = double(clock() - start_time) / CLOCKS_PER_SEC * 1000.0;
+        double avg_time2 = total_time2 / repetitions;
+
+
+        // 测试算法3：二重循环求和算法
+        start_time = clock();
+        for (int rep = 0; rep < repetitions; rep++) {
+            // 需要复制数组，因为 algorithm3 会修改数组 a
+            vector<int> temp_a = a;
+            algorithm3(temp_a, n);
+        }
+        total_time3 = double(clock() - start_time) / CLOCKS_PER_SEC * 1000.0;
+        double avg_time3 = total_time3 / repetitions;
+
+
+        // 输出结果（时间保留三位小数）
+        cout << setw(8) << n
+             << setw(15) << repetitions
+             << setw(20) << fixed << setprecision(3) << total_time1
+             << setw(20) << fixed << setprecision(3) << avg_time1
+             << setw(20) << fixed << setprecision(3) << total_time2
+             << setw(20) << fixed << setprecision(3) << avg_time2
+             << setw(20) << fixed << setprecision(3) << total_time3
+             << setw(20) << fixed << setprecision(3) << avg_time3
+             << endl;
+    }
+
 
     return 0;
 }
