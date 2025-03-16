@@ -72,3 +72,5 @@ int main() {
         for (int i = 0; i < n; i++) {
             a[i] = rand() % 101; // 0~100
         }
+    }
+}
