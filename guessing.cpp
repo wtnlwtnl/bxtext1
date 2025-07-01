@@ -1,12 +1,16 @@
 #include "PCFG.h"
+#include "cuda_generate.h"
+#include <omp.h>
 using namespace std;
+
+
 
 void PriorityQueue::CalProb(PT &pt)
 {
     // 计算PriorityQueue里面一个PT的流程如下：
     // 1. 首先需要计算一个PT本身的概率。例如，L6S1的概率为0.15
-    // 2. 需要注意的是，Queue里面的PT不是“纯粹的”PT，而是除了最后一个segment以外，全部被value实例化的PT
-    // 3. 所以，对于L6S1而言，其在Queue里面的实际PT可能是123456S1，其中“123456”为L6的一个具体value。
+    // 2. 需要注意的是，Queue里面的PT不是"纯粹的"PT，而是除了最后一个segment以外，全部被value实例化的PT
+    // 3. 所以，对于L6S1而言，其在Queue里面的实际PT可能是123456S1，其中"123456"为L6的一个具体value。
     // 4. 这个时候就需要计算123456在L6中出现的概率了。假设123456在所有L6 segment中的概率为0.1，那么123456S1的概率就是0.1*0.15
 
     // 计算一个PT本身的概率。后续所有具体segment value的概率，直接累乘在这个初始概率值上
@@ -14,7 +18,6 @@ void PriorityQueue::CalProb(PT &pt)
 
     // index: 标注当前segment在PT中的位置
     int index = 0;
-
 
     for (int idx : pt.curr_indices)
     {
@@ -67,14 +70,23 @@ void PriorityQueue::init()
                 // m.letters[m.FindLetter(seg)]：一个letter segment在模型中对应的所有统计数据
                 // m.letters[m.FindLetter(seg)].ordered_values：一个letter segment在模型中，所有value的总数目
                 pt.max_indices.emplace_back(m.letters[m.FindLetter(seg)].ordered_values.size());
+                
+                // 预缓存字母segment值到GPU
+                cacheSegmentValues(seg.type, seg.length, m.letters[m.FindLetter(seg)].ordered_values);
             }
             if (seg.type == 2)
             {
                 pt.max_indices.emplace_back(m.digits[m.FindDigit(seg)].ordered_values.size());
+                
+                // 预缓存数字segment值到GPU
+                cacheSegmentValues(seg.type, seg.length, m.digits[m.FindDigit(seg)].ordered_values);
             }
             if (seg.type == 3)
             {
                 pt.max_indices.emplace_back(m.symbols[m.FindSymbol(seg)].ordered_values.size());
+                
+                // 预缓存符号segment值到GPU
+                cacheSegmentValues(seg.type, seg.length, m.symbols[m.FindSymbol(seg)].ordered_values);
             }
         }
         pt.preterm_prob = float(m.preterm_freq[m.FindPT(pt)]) / m.total_preterm;
@@ -91,44 +103,70 @@ void PriorityQueue::init()
 
 void PriorityQueue::PopNext()
 {
+    // 调用多PT版本，但只处理一个PT
+    PopNextMultiple(1);
+}
 
-    // 对优先队列最前面的PT，首先利用这个PT生成一系列猜测
-    Generate(priority.front());
-
-    // 然后需要根据即将出队的PT，生成一系列新的PT
-    vector<PT> new_pts = priority.front().NewPTs();
-    for (PT pt : new_pts)
-    {
+void PriorityQueue::PopNextMultiple(int count)
+{
+    // 确保不超出队列中可用的PT数量
+    count = min(count, (int)priority.size());
+    if (count <= 0) return;
+    
+    // 存储所有要处理的PT
+    vector<PT> pts_to_process;
+    for (int i = 0; i < count; i++) {
+        pts_to_process.push_back(priority[i]);
+    }
+    
+    // 使用OpenMP并行处理多个PT生成猜测
+    #pragma omp parallel for
+    for (int i = 0; i < pts_to_process.size(); i++) {
+        // 使用每个PT生成猜测
+        Generate(pts_to_process[i]);
+    }
+    
+    // 收集并处理所有新生成的PT
+    vector<PT> all_new_pts;
+    for (int i = 0; i < count; i++) {
+        // 获取当前PT生成的新PT
+        vector<PT> new_pts = priority[i].NewPTs();
+        // 收集所有新的PT
+        all_new_pts.insert(all_new_pts.end(), new_pts.begin(), new_pts.end());
+    }
+    
+    // 移除已处理的PT
+    priority.erase(priority.begin(), priority.begin() + count);
+    
+    // 为所有新PT计算概率并插入回优先队列
+    for (PT& pt : all_new_pts) {
         // 计算概率
         CalProb(pt);
-        // 接下来的这个循环，作用是根据概率，将新的PT插入到优先队列中
-        for (auto iter = priority.begin(); iter != priority.end(); iter++)
-        {
+        
+        // 根据概率将PT插入到优先队列的适当位置
+        bool inserted = false;
+        for (auto iter = priority.begin(); iter != priority.end(); iter++) {
             // 对于非队首和队尾的特殊情况
-            if (iter != priority.end() - 1 && iter != priority.begin())
-            {
+            if (iter != priority.end() - 1 && iter != priority.begin()) {
                 // 判定概率
-                if (pt.prob <= iter->prob && pt.prob > (iter + 1)->prob)
-                {
+                if (pt.prob <= iter->prob && pt.prob > (iter + 1)->prob) {
                     priority.emplace(iter + 1, pt);
+                    inserted = true;
                     break;
                 }
             }
-            if (iter == priority.end() - 1)
-            {
-                priority.emplace_back(pt);
-                break;
-            }
-            if (iter == priority.begin() && iter->prob < pt.prob)
-            {
+            if (iter == priority.begin() && iter->prob < pt.prob) {
                 priority.emplace(iter, pt);
+                inserted = true;
                 break;
             }
         }
+        
+        // 如果没有找到合适位置，添加到队列末尾
+        if (!inserted) {
+            priority.emplace_back(pt);
+        }
     }
-
-    // 现在队首的PT善后工作已经结束，将其出队（删除）
-    priority.erase(priority.begin());
 }
 
 // 这个函数你就算看不懂，对并行算法的实现影响也不大
@@ -176,7 +214,6 @@ vector<PT> PT::NewPTs()
     return res;
 }
 
-
 // 这个函数是PCFG并行化算法的主要载体
 // 尽量看懂，然后进行并行实现
 void PriorityQueue::Generate(PT pt)
@@ -187,33 +224,12 @@ void PriorityQueue::Generate(PT pt)
     // 对于只有一个segment的PT，直接遍历生成其中的所有value即可
     if (pt.content.size() == 1)
     {
-        // 指向最后一个segment的指针，这个指针实际指向模型中的统计数据
-        segment *a;
-        // 在模型中定位到这个segment
-        if (pt.content[0].type == 1)
-        {
-            a = &m.letters[m.FindLetter(pt.content[0])];
-        }
-        if (pt.content[0].type == 2)
-        {
-            a = &m.digits[m.FindDigit(pt.content[0])];
-        }
-        if (pt.content[0].type == 3)
-        {
-            a = &m.symbols[m.FindSymbol(pt.content[0])];
-        }
+        // 获取segment类型和长度
+        int segmentType = pt.content[0].type;
+        int segmentLength = pt.content[0].length;
         
-        // Multi-thread TODO：
-        // 这个for循环就是你需要进行并行化的主要部分了，特别是在多线程&GPU编程任务中
-        // 可以看到，这个循环本质上就是把模型中一个segment的所有value，赋值到PT中，形成一系列新的猜测
-        // 这个过程是可以高度并行化的
-        for (int i = 0; i < pt.max_indices[0]; i += 1)
-        {
-            string guess = a->ordered_values[i];
-            // cout << guess << endl;
-            guesses.emplace_back(guess);
-            total_guesses += 1;
-        }
+        // 使用优化的GPU实现
+        generateSingleSegmentGPU(segmentType, segmentLength, pt.max_indices[0], guesses, total_guesses);
     }
     else
     {
@@ -243,189 +259,12 @@ void PriorityQueue::Generate(PT pt)
             }
         }
 
-        // 指向最后一个segment的指针，这个指针实际指向模型中的统计数据
-        segment *a;
-        if (pt.content[pt.content.size() - 1].type == 1)
-        {
-            a = &m.letters[m.FindLetter(pt.content[pt.content.size() - 1])];
-        }
-        if (pt.content[pt.content.size() - 1].type == 2)
-        {
-            a = &m.digits[m.FindDigit(pt.content[pt.content.size() - 1])];
-        }
-        if (pt.content[pt.content.size() - 1].type == 3)
-        {
-            a = &m.symbols[m.FindSymbol(pt.content[pt.content.size() - 1])];
-        }
+        // 获取最后一个segment的类型和长度
+        int lastSegmentType = pt.content[pt.content.size() - 1].type;
+        int lastSegmentLength = pt.content[pt.content.size() - 1].length;
         
-        // Multi-thread TODO：
-        // 这个for循环就是你需要进行并行化的主要部分了，特别是在多线程&GPU编程任务中
-        // 可以看到，这个循环本质上就是把模型中一个segment的所有value，赋值到PT中，形成一系列新的猜测
-        // 这个过程是可以高度并行化的
-        for (int i = 0; i < pt.max_indices[pt.content.size() - 1]; i += 1)
-        {
-            string temp = guess + a->ordered_values[i];
-            // cout << temp << endl;
-            guesses.emplace_back(temp);
-            total_guesses += 1;
-        }
-    }
-}
-
-// 线程参数结构体
-struct ThreadArg1 {
-    PriorityQueue* pq;
-    PT pt;
-    int start;
-    int end;
-    vector<string>* local_guesses;
-    Attr* a;
-    int* local_total;
-};
-
-struct ThreadArg2 {
-    PriorityQueue* pq;
-    PT pt;
-    int start;
-    int end;
-    vector<string>* local_guesses;
-    Attr* a;
-    int* local_total;
-    string guess;
-};
-
-// 第一个循环的线程函数
-void* generate_worker1(void* arg) {
-    ThreadArg1* targ = (ThreadArg1*)arg;
-    for (int i = targ->start; i < targ->end; i++) {
-        string guess = targ->a->ordered_values[i];
-        targ->local_guesses->push_back(guess);
-        (*targ->local_total)++;
-    }
-    return NULL;
-}
-
-// 第二个循环的线程函数
-void* generate_worker2(void* arg) {
-    ThreadArg2* targ = (ThreadArg2*)arg;
-    for (int i = targ->start; i < targ->end; i++) {
-        string temp = targ->guess + targ->a->ordered_values[i];
-        targ->local_guesses->push_back(temp);
-        (*targ->local_total)++;
-    }
-    return NULL;
-}
-
-// 并行版本的Generate函数
-void PriorityQueue::GenerateParallel(PT pt) {
-    if (pt.content.empty()) {
-        return;
-    }
-    
-    // 获取可用的CPU核心数量
-    int num_threads = std::thread::hardware_concurrency();
-    // 确保至少有一个线程，且不超过合理数量
-    num_threads = max(1, min(num_threads, 16));
-    
-    // 处理第一种情况：只有一个segment时
-    if (pt.content.size() == 1) {
-        Attr* a = attrs[pt.content[0]];
-        
-        pthread_t threads[num_threads];
-        ThreadArg1 thread_args[num_threads];
-        vector<string> local_results[num_threads];
-        int local_counts[num_threads] = {0};
-        
-        int items_per_thread = (pt.max_indices[0] + num_threads - 1) / num_threads;
-        
-        // 创建线程
-        for (int t = 0; t < num_threads; t++) {
-            int start = t * items_per_thread;
-            int end = min(start + items_per_thread, pt.max_indices[0]);
-            
-            if (start >= end) continue;
-            
-            thread_args[t].pq = this;
-            thread_args[t].pt = pt;
-            thread_args[t].start = start;
-            thread_args[t].end = end;
-            thread_args[t].local_guesses = &local_results[t];
-            thread_args[t].a = a;
-            thread_args[t].local_total = &local_counts[t];
-            
-            pthread_create(&threads[t], NULL, generate_worker1, &thread_args[t]);
-        }
-        
-        // 等待所有线程完成
-        for (int t = 0; t < num_threads; t++) {
-            pthread_join(threads[t], NULL);
-        }
-        
-        // 合并结果
-        int total = 0;
-        for (int t = 0; t < num_threads; t++) {
-            guesses.insert(guesses.end(), local_results[t].begin(), local_results[t].end());
-            total += local_counts[t];
-        }
-        total_guesses += total;
-    }
-    // 处理第二种情况：有多个segment时
-    else {
-        // 先处理所有segment，除了最后一个
-        string guess;
-        int segment_id = 0;
-        for (auto attr_id : pt.content) {
-            if (segment_id == pt.content.size() - 1) {
-                break;
-            }
-            
-            Attr* a = attrs[attr_id];
-            pt.current_indices[segment_id] = pt.max_indices[segment_id] - 1;
-            guess += a->ordered_values[pt.current_indices[segment_id]];
-            segment_id += 1;
-        }
-        
-        // 并行处理最后一个segment
-        Attr* a = attrs[pt.content[pt.content.size() - 1]];
-        
-        pthread_t threads[num_threads];
-        ThreadArg2 thread_args[num_threads];
-        vector<string> local_results[num_threads];
-        int local_counts[num_threads] = {0};
-        
-        int last_max_index = pt.max_indices[pt.content.size() - 1];
-        int items_per_thread = (last_max_index + num_threads - 1) / num_threads;
-        
-        // 创建线程
-        for (int t = 0; t < num_threads; t++) {
-            int start = t * items_per_thread;
-            int end = min(start + items_per_thread, last_max_index);
-            
-            if (start >= end) continue;
-            
-            thread_args[t].pq = this;
-            thread_args[t].pt = pt;
-            thread_args[t].start = start;
-            thread_args[t].end = end;
-            thread_args[t].local_guesses = &local_results[t];
-            thread_args[t].a = a;
-            thread_args[t].local_total = &local_counts[t];
-            thread_args[t].guess = guess;
-            
-            pthread_create(&threads[t], NULL, generate_worker2, &thread_args[t]);
-        }
-        
-        // 等待所有线程完成
-        for (int t = 0; t < num_threads; t++) {
-            pthread_join(threads[t], NULL);
-        }
-        
-        // 合并结果
-        int total = 0;
-        for (int t = 0; t < num_threads; t++) {
-            guesses.insert(guesses.end(), local_results[t].begin(), local_results[t].end());
-            total += local_counts[t];
-        }
-        total_guesses += total;
+        // 使用优化的GPU实现
+        generateMultiSegmentGPU(guess, lastSegmentType, lastSegmentLength, 
+                               pt.max_indices[pt.content.size() - 1], guesses, total_guesses);
     }
 }
