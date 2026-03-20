@@ -1,0 +1,287 @@
+NEMU expression test results
+Cases file: /home/caizixuan/ics2017/nemu/tests/expr_p_cases.tsv
+Binary: /home/caizixuan/ics2017/nemu/build/nemu
+
+[PASS] 01 p 1+2
+Description: 测试最基本的加法
+Expected (exact): the value of expr is 3
+Actual: the value of expr is 3
+
+[PASS] 02 p 7-4
+Description: 测试最基本的减法
+Expected (exact): the value of expr is 3
+Actual: the value of expr is 3
+
+[PASS] 03 p 3*5
+Description: 测试最基本的乘法
+Expected (exact): the value of expr is f
+Actual: the value of expr is f
+
+[PASS] 04 p 8/2
+Description: 测试最基本的除法
+Expected (exact): the value of expr is 4
+Actual: the value of expr is 4
+
+[PASS] 05 p 7/2
+Description: 测试整数除法是否向下取整
+Expected (exact): the value of expr is 3
+Actual: the value of expr is 3
+
+[PASS] 06 p 1+2*3
+Description: 测试乘法优先于加法
+Expected (exact): the value of expr is 7
+Actual: the value of expr is 7
+
+[PASS] 07 p (1+2)*3
+Description: 测试括号改变优先级
+Expected (exact): the value of expr is 9
+Actual: the value of expr is 9
+
+[PASS] 08 p 8-4-1
+Description: 测试减法左结合
+Expected (exact): the value of expr is 3
+Actual: the value of expr is 3
+
+[PASS] 09 p 20/5/2
+Description: 测试除法左结合
+Expected (exact): the value of expr is 2
+Actual: the value of expr is 2
+
+[PASS] 10 p -1
+Description: 测试一元负号
+Expected (exact): the value of expr is ffffffff
+Actual: the value of expr is ffffffff
+
+[PASS] 11 p -1+2
+Description: 测试一元负号和加法组合
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 12 p -(1+2)
+Description: 测试负号作用于括号表达式
+Expected (exact): the value of expr is fffffffd
+Actual: the value of expr is fffffffd
+
+[PASS] 13 p !0
+Description: 测试逻辑非对零生效
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 14 p !1
+Description: 测试逻辑非对非零值生效
+Expected (exact): the value of expr is 0
+Actual: the value of expr is 0
+
+[PASS] 15 p 1==1
+Description: 测试相等比较为真
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 16 p 1==2
+Description: 测试相等比较为假
+Expected (exact): the value of expr is 0
+Actual: the value of expr is 0
+
+[PASS] 17 p 1!=2
+Description: 测试不等比较为真
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 18 p 2!=2
+Description: 测试不等比较为假
+Expected (exact): the value of expr is 0
+Actual: the value of expr is 0
+
+[PASS] 19 p 1<2
+Description: 测试小于比较
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 20 p 2<1
+Description: 测试小于比较为假
+Expected (exact): the value of expr is 0
+Actual: the value of expr is 0
+
+[PASS] 21 p 2<=2
+Description: 测试小于等于比较
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 22 p 3<=2
+Description: 测试小于等于比较为假
+Expected (exact): the value of expr is 0
+Actual: the value of expr is 0
+
+[PASS] 23 p 3>2
+Description: 测试大于比较
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 24 p 2>3
+Description: 测试大于比较为假
+Expected (exact): the value of expr is 0
+Actual: the value of expr is 0
+
+[PASS] 25 p 3>=3
+Description: 测试大于等于比较
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 26 p 2>=3
+Description: 测试大于等于比较为假
+Expected (exact): the value of expr is 0
+Actual: the value of expr is 0
+
+[PASS] 27 p 1&&1
+Description: 测试逻辑与为真
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 28 p 1&&0
+Description: 测试逻辑与为假
+Expected (exact): the value of expr is 0
+Actual: the value of expr is 0
+
+[PASS] 29 p 0||1
+Description: 测试逻辑或为真
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 30 p 0||0
+Description: 测试逻辑或为假
+Expected (exact): the value of expr is 0
+Actual: the value of expr is 0
+
+[PASS] 31 p 1||0&&0
+Description: 测试逻辑与优先于逻辑或
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 32 p 6&3
+Description: 测试按位与
+Expected (exact): the value of expr is 2
+Actual: the value of expr is 2
+
+[PASS] 33 p 6|3
+Description: 测试按位或
+Expected (exact): the value of expr is 7
+Actual: the value of expr is 7
+
+[PASS] 34 p 6^3
+Description: 测试按位异或
+Expected (exact): the value of expr is 5
+Actual: the value of expr is 5
+
+[PASS] 35 p 1+2==3
+Description: 测试算术与比较混合
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 36 p 1+2*3==7&&4>2
+Description: 测试算术比较逻辑混合
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 37 p (2+3)*(4+5)==45
+Description: 测试复杂括号表达式
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 38 p 2<3&&3<4
+Description: 测试链式逻辑组合
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 39 p 2<3||0
+Description: 测试比较与逻辑或混合
+Expected (exact): the value of expr is 1
+Actual: the value of expr is 1
+
+[PASS] 40 p !(1==1)
+Description: 测试逻辑非和比较组合
+Expected (exact): the value of expr is 0
+Actual: the value of expr is 0
+
+[PASS] 41 p *0x100000
+Description: 测试最基本的解引用
+Expected (exact): the value of expr is 1234b8
+Actual: the value of expr is 1234b8
+
+[PASS] 42 p *(0x100000+4)
+Description: 测试解引用与括号、加法组合
+Expected (exact): the value of expr is 27b900
+Actual: the value of expr is 27b900
+
+[PASS] 43 p *0x100024
+Description: 测试镜像尾部附近的解引用
+Expected (exact): the value of expr is d60000
+Actual: the value of expr is d60000
+
+[PASS] 44 p $eax
+Description: 测试读取32位寄存器eax
+Expected (prefix): the value of expr is 
+Actual: the value of expr is 3f18fce
+
+[PASS] 45 p $ecx
+Description: 测试读取32位寄存器ecx
+Expected (prefix): the value of expr is 
+Actual: the value of expr is 368a10bc
+
+[PASS] 46 p $eip
+Description: 测试读取eip
+Expected (exact): the value of expr is 100000
+Actual: the value of expr is 100000
+
+[PASS] 47 p $ax
+Description: 测试读取16位寄存器ax
+Expected (prefix): the value of expr is 
+Actual: the value of expr is 8fce
+
+[PASS] 48 p $al
+Description: 测试读取8位低位寄存器al
+Expected (prefix): the value of expr is 
+Actual: the value of expr is ce
+
+[PASS] 49 p $ah
+Description: 测试读取8位高位寄存器ah
+Expected (prefix): the value of expr is 
+Actual: the value of expr is 8f
+
+[PASS] 50 p $eax+$ecx
+Description: 测试寄存器与算术运算混合
+Expected (prefix): the value of expr is 
+Actual: the value of expr is 3a7ba08a
+
+[PASS] 51 p $eax==$ebx
+Description: 测试寄存器与比较运算混合
+Expected (prefix): the value of expr is 
+Actual: the value of expr is 0
+
+[PASS] 52 p *$eip
+Description: 测试寄存器地址解引用
+Expected (exact): the value of expr is 1234b8
+Actual: the value of expr is 1234b8
+
+[PASS] 53 p 1/0
+Description: 测试除零错误处理
+Expected (exact): Bad expression.
+Actual: Bad expression.
+
+[PASS] 54 p (1+2
+Description: 测试左括号不匹配
+Expected (exact): Bad expression.
+Actual: Bad expression.
+
+[PASS] 55 p 1+)2
+Description: 测试非法表达式结构
+Expected (exact): Bad expression.
+Actual: Bad expression.
+
+[PASS] 56 p
+Description: 测试缺少参数情况
+Expected (exact): Lack of parameter!
+Actual: Lack of parameter!
+
+Total: 56
+Passed: 56
+Failed: 0

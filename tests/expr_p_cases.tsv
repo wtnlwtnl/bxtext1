@@ -1,0 +1,57 @@
+# id	command	mode	expected	description
+01	p 1+2	exact	the value of expr is 3	测试最基本的加法
+02	p 7-4	exact	the value of expr is 3	测试最基本的减法
+03	p 3*5	exact	the value of expr is f	测试最基本的乘法
+04	p 8/2	exact	the value of expr is 4	测试最基本的除法
+05	p 7/2	exact	the value of expr is 3	测试整数除法是否向下取整
+06	p 1+2*3	exact	the value of expr is 7	测试乘法优先于加法
+07	p (1+2)*3	exact	the value of expr is 9	测试括号改变优先级
+08	p 8-4-1	exact	the value of expr is 3	测试减法左结合
+09	p 20/5/2	exact	the value of expr is 2	测试除法左结合
+10	p -1	exact	the value of expr is ffffffff	测试一元负号
+11	p -1+2	exact	the value of expr is 1	测试一元负号和加法组合
+12	p -(1+2)	exact	the value of expr is fffffffd	测试负号作用于括号表达式
+13	p !0	exact	the value of expr is 1	测试逻辑非对零生效
+14	p !1	exact	the value of expr is 0	测试逻辑非对非零值生效
+15	p 1==1	exact	the value of expr is 1	测试相等比较为真
+16	p 1==2	exact	the value of expr is 0	测试相等比较为假
+17	p 1!=2	exact	the value of expr is 1	测试不等比较为真
+18	p 2!=2	exact	the value of expr is 0	测试不等比较为假
+19	p 1<2	exact	the value of expr is 1	测试小于比较
+20	p 2<1	exact	the value of expr is 0	测试小于比较为假
+21	p 2<=2	exact	the value of expr is 1	测试小于等于比较
+22	p 3<=2	exact	the value of expr is 0	测试小于等于比较为假
+23	p 3>2	exact	the value of expr is 1	测试大于比较
+24	p 2>3	exact	the value of expr is 0	测试大于比较为假
+25	p 3>=3	exact	the value of expr is 1	测试大于等于比较
+26	p 2>=3	exact	the value of expr is 0	测试大于等于比较为假
+27	p 1&&1	exact	the value of expr is 1	测试逻辑与为真
+28	p 1&&0	exact	the value of expr is 0	测试逻辑与为假
+29	p 0||1	exact	the value of expr is 1	测试逻辑或为真
+30	p 0||0	exact	the value of expr is 0	测试逻辑或为假
+31	p 1||0&&0	exact	the value of expr is 1	测试逻辑与优先于逻辑或
+32	p 6&3	exact	the value of expr is 2	测试按位与
+33	p 6|3	exact	the value of expr is 7	测试按位或
+34	p 6^3	exact	the value of expr is 5	测试按位异或
+35	p 1+2==3	exact	the value of expr is 1	测试算术与比较混合
+36	p 1+2*3==7&&4>2	exact	the value of expr is 1	测试算术比较逻辑混合
+37	p (2+3)*(4+5)==45	exact	the value of expr is 1	测试复杂括号表达式
+38	p 2<3&&3<4	exact	the value of expr is 1	测试链式逻辑组合
+39	p 2<3||0	exact	the value of expr is 1	测试比较与逻辑或混合
+40	p !(1==1)	exact	the value of expr is 0	测试逻辑非和比较组合
+41	p *0x100000	exact	the value of expr is 1234b8	测试最基本的解引用
+42	p *(0x100000+4)	exact	the value of expr is 27b900	测试解引用与括号、加法组合
+43	p *0x100024	exact	the value of expr is d60000	测试镜像尾部附近的解引用
+44	p $eax	prefix	the value of expr is 	测试读取32位寄存器eax
+45	p $ecx	prefix	the value of expr is 	测试读取32位寄存器ecx
+46	p $eip	exact	the value of expr is 100000	测试读取eip
+47	p $ax	prefix	the value of expr is 	测试读取16位寄存器ax
+48	p $al	prefix	the value of expr is 	测试读取8位低位寄存器al
+49	p $ah	prefix	the value of expr is 	测试读取8位高位寄存器ah
+50	p $eax+$ecx	prefix	the value of expr is 	测试寄存器与算术运算混合
+51	p $eax==$ebx	prefix	the value of expr is 	测试寄存器与比较运算混合
+52	p *$eip	exact	the value of expr is 1234b8	测试寄存器地址解引用
+53	p 1/0	exact	Bad expression.	测试除零错误处理
+54	p (1+2	exact	Bad expression.	测试左括号不匹配
+55	p 1+)2	exact	Bad expression.	测试非法表达式结构
+56	p	exact	Lack of parameter!	测试缺少参数情况
